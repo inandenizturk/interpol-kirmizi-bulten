@@ -16,7 +16,8 @@ def ana_sayfa():
     satirlar = imlec.fetchall()
     baglanti.close()
 
-    html = "<h1>Interpol Kırmızı Bülten 🚨</h1>"
+    html = "<meta charset='utf-8'><meta http-equiv='refresh' content='10'>"
+    html += "<h1>Interpol Kırmızı Bülten 🚨</h1>"
     html += "<table border='1'>"
     html += "<tr><th>ID</th><th>Ad</th><th>Soyad</th><th>Doğum</th><th>İlk görülme</th><th>Son değişiklik</th></tr>"
 
