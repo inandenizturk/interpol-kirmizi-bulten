@@ -1,0 +1,44 @@
+services:
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  container_a:
+    build: .
+    command: python container_a.py
+    environment:
+      RABBIT_HOST: rabbitmq
+      KUYRUK_ADI: interpol
+      VERI_DOSYASI: ornek_veri.json
+      KONTROL_ARALIGI: "30"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  container_b:
+    build: .
+    command: sh -c "python container_b.py & uvicorn web:app --host 0.0.0.0 --port 8000"
+    environment:
+      RABBIT_HOST: rabbitmq
+      KUYRUK_ADI: interpol
+      DB_DOSYASI: /data/interpol.db
+    ports:
+      - "8000:8000"
+    volumes:
+      - db_data:/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  db_data:
