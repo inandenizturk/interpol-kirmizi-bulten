@@ -25,7 +25,8 @@ services:
       RABBIT_HOST: rabbitmq          # Docker ağında RabbitMQ'ya servis adıyla ulaşılır
       KUYRUK_ADI: interpol
       VERI_DOSYASI: ornek_veri.json
-      KONTROL_ARALIGI: "30"          # kaç saniyede bir veri gönderileceği
+      KONTROL_ARALIGI: "30"    # kaç saniyede bir veri gönderileceği
+      TZ: Europe/Istanbul 
     # RabbitMQ sağlıklı olmadan başlamaz.
     depends_on:
       rabbitmq:
@@ -40,7 +41,9 @@ services:
     environment:
       RABBIT_HOST: rabbitmq
       KUYRUK_ADI: interpol
-      DB_DOSYASI: /data/interpol.db  # veritabanı kalıcı volume içinde tutulur
+      DB_DOSYASI: /data/interpol.db # veritabanı kalıcı volume içinde tutulur
+      TZ: Europe/Istanbul
+      
     ports:
       - "8000:8000"                  # web arayüzü: http://localhost:8000
     volumes:
