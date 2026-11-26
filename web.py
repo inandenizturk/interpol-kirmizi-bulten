@@ -1,34 +1,33 @@
-"""Container B'nin web arayüzü: veritabanındaki kişileri tablo olarak gösterir."""
+"""Web arayüzü (FastAPI): veritabanındaki kişileri HTML tablo olarak gösterir."""
 import os
 import sqlite3
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 
+# Veritabanı dosyasının yolu ortam değişkeninden okunur (Docker'da /data/interpol.db).
 DB_DOSYASI = os.getenv("DB_DOSYASI", "interpol.db")
 
 app = FastAPI()
 
-
 @app.get("/", response_class=HTMLResponse)
 def ana_sayfa():
-    """Kayıtlı kişileri HTML tablosu olarak döndürür; değişmiş kayıtları kırmızı gösterir."""
+    """Ana sayfa: tüm kayıtları zaman bilgileriyle birlikte tablo olarak döndürür."""
     baglanti = sqlite3.connect(DB_DOSYASI)
     imlec = baglanti.cursor()
-    # container_b henüz hiç kayıt yapmadıysa tablo olmayabilir; sayfa hata vermesin diye
+    # Tablo henüz yoksa (B daha veri yazmadıysa) sayfa hata vermesin diye oluşturulur.
     imlec.execute("CREATE TABLE IF NOT EXISTS kisiler (entity_id TEXT PRIMARY KEY, forename TEXT, name TEXT, date_of_birth TEXT, ilk_gorulme TEXT, son_degisiklik TEXT)")
     imlec.execute("SELECT entity_id, forename, name, date_of_birth, ilk_gorulme, son_degisiklik FROM kisiler")
     satirlar = imlec.fetchall()
     baglanti.close()
 
-    # Sayfa her 10 saniyede kendini yeniler; yeni alarmlar elle yenilemeden görünür
+    # Sayfa her 10 saniyede bir kendini yeniler, böylece yeni veriler ve alarmlar otomatik görünür.
     html = "<meta charset='utf-8'><meta http-equiv='refresh' content='10'>"
     html += "<h1>Interpol Kırmızı Bülten 🚨</h1>"
     html += "<table border='1'>"
     html += "<tr><th>ID</th><th>Ad</th><th>Soyad</th><th>Doğum</th><th>İlk görülme</th><th>Son değişiklik</th></tr>"
 
     for satir in satirlar:
-        # satir[4] = ilk_gorulme, satir[5] = son_degisiklik
-        # İkisi farklıysa kayıt kaydedildikten sonra değişmiştir → alarm (kırmızı satır)
+        # ALARM: ilk görülme ile son değişiklik farklıysa kişinin bilgisi değişmiştir, satır kırmızı olur.
         if satir[4] != satir[5]:
             html += "<tr style='background:#ffcccc'>"
         else:
@@ -40,7 +39,7 @@ def ana_sayfa():
     html += "</table>"
     return html
 
-
+# Dosya doğrudan çalıştırılırsa sunucu 8000 portunda başlar (Docker'da uvicorn komutuyla başlatılır).
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
