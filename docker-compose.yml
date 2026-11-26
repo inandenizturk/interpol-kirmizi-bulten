@@ -1,16 +1,19 @@
 services:
 
+  # Container C: RabbitMQ mesaj kuyruğu (A ile B arasındaki aracı)
   rabbitmq:
     image: rabbitmq:3-management
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "5672:5672"     # Python kodlarının (pika) bağlandığı port
+      - "15672:15672"   # Tarayıcıdan açılan yönetim paneli (guest/guest)
+    # A ve B, RabbitMQ gerçekten hazır olana kadar başlamasın diye sağlık kontrolü
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 5s
       timeout: 5s
       retries: 10
 
+  # Container A: veriyi periyodik olarak okuyup kuyruğa gönderir (producer)
   container_a:
     build: .
     command: python container_a.py
@@ -19,11 +22,16 @@ services:
       KUYRUK_ADI: interpol
       VERI_DOSYASI: ornek_veri.json
       KONTROL_ARALIGI: "30"
+      KAYNAK: ornek            # "interpol" yapılırsa canlı API denenir
+      TZ: Europe/Istanbul
+    volumes:
+      - ./ornek_veri.json:/app/ornek_veri.json   # dosya değişince yeniden build gerekmesin
     depends_on:
       rabbitmq:
         condition: service_healthy
     restart: unless-stopped
 
+  # Container B: kuyruğu dinler, veritabanına yazar ve web sayfasını sunar (consumer)
   container_b:
     build: .
     command: sh -c "python container_b.py & uvicorn web:app --host 0.0.0.0 --port 8000"
@@ -31,10 +39,11 @@ services:
       RABBIT_HOST: rabbitmq
       KUYRUK_ADI: interpol
       DB_DOSYASI: /data/interpol.db
+      TZ: Europe/Istanbul
     ports:
       - "8000:8000"
     volumes:
-      - db_data:/data
+      - db_data:/data   # veritabanı kalıcı olsun, container silinse de kayıtlar kalsın
     depends_on:
       rabbitmq:
         condition: service_healthy
