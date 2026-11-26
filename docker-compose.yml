@@ -1,53 +1,55 @@
+# Interpol kırmızı bülten sistemi: 3 servis birlikte çalışır.
+# rabbitmq (Container C) = mesaj kuyruğu, container_a = veri gönderen, container_b = veri alan + web arayüzü.
+# Çalıştırma: docker compose up --build
+
 services:
 
-  # Container C: RabbitMQ mesaj kuyruğu (A ile B arasındaki aracı)
+  # Container C: RabbitMQ mesaj kuyruğu sunucusu
   rabbitmq:
     image: rabbitmq:3-management
     ports:
-      - "5672:5672"     # Python kodlarının (pika) bağlandığı port
-      - "15672:15672"   # Tarayıcıdan açılan yönetim paneli (guest/guest)
-    # A ve B, RabbitMQ gerçekten hazır olana kadar başlamasın diye sağlık kontrolü
+      - "5672:5672"     # uygulamaların bağlandığı port
+      - "15672:15672"   # tarayıcıdan yönetim paneli (guest / guest)
+    # RabbitMQ gerçekten hazır mı diye her 5 saniyede kontrol edilir.
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 5s
       timeout: 5s
       retries: 10
 
-  # Container A: veriyi periyodik olarak okuyup kuyruğa gönderir (producer)
+  # Container A: örnek veriyi okuyup kuyruğa gönderir
   container_a:
     build: .
     command: python container_a.py
     environment:
-      RABBIT_HOST: rabbitmq
+      RABBIT_HOST: rabbitmq          # Docker ağında RabbitMQ'ya servis adıyla ulaşılır
       KUYRUK_ADI: interpol
       VERI_DOSYASI: ornek_veri.json
-      KONTROL_ARALIGI: "30"
-      KAYNAK: ornek            # "interpol" yapılırsa canlı API denenir
-      TZ: Europe/Istanbul
-    volumes:
-      - ./ornek_veri.json:/app/ornek_veri.json   # dosya değişince yeniden build gerekmesin
+      KONTROL_ARALIGI: "30"          # kaç saniyede bir veri gönderileceği
+    # RabbitMQ sağlıklı olmadan başlamaz.
     depends_on:
       rabbitmq:
         condition: service_healthy
-    restart: unless-stopped
+    restart: unless-stopped          # çökerse otomatik yeniden başlar
 
-  # Container B: kuyruğu dinler, veritabanına yazar ve web sayfasını sunar (consumer)
+  # Container B: kuyruğu dinler, veritabanına yazar ve web sayfasını sunar
   container_b:
     build: .
+    # İki işlem birlikte çalışır: kuyruk dinleyici (arka planda) + web sunucusu
     command: sh -c "python container_b.py & uvicorn web:app --host 0.0.0.0 --port 8000"
     environment:
       RABBIT_HOST: rabbitmq
       KUYRUK_ADI: interpol
-      DB_DOSYASI: /data/interpol.db
-      TZ: Europe/Istanbul
+      DB_DOSYASI: /data/interpol.db  # veritabanı kalıcı volume içinde tutulur
     ports:
-      - "8000:8000"
+      - "8000:8000"                  # web arayüzü: http://localhost:8000
     volumes:
-      - db_data:/data   # veritabanı kalıcı olsun, container silinse de kayıtlar kalsın
+      - db_data:/data                # konteyner silinse de veritabanı korunur
     depends_on:
       rabbitmq:
         condition: service_healthy
     restart: unless-stopped
 
+# Kalıcı veri alanı (veritabanı dosyası burada saklanır)
 volumes:
   db_data:
