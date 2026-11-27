@@ -1,10 +1,10 @@
-"""Container A (Üretici): örnek veriyi okur ve RabbitMQ kuyruğuna gönderir.
+"""Container A (Üretici): Interpol verisini çeker ve RabbitMQ kuyruğuna gönderir.
 
-Belirli aralıklarla (KONTROL_ARALIGI saniye) tüm kişileri tekrar gönderir.
+Her turda önce gerçek Interpol API'si denenir; erişilemezse örnek veri kullanılır.
 """
 import os
 import time
-from kaynak import OrnekKaynak
+from kaynak import OrnekKaynak, InterpolKaynak
 from kuyruk import Kuyruk
 
 # Ayarlar ortam değişkenlerinden (env) okunur; yoksa varsayılan değerler kullanılır.
@@ -13,8 +13,8 @@ RABBIT_HOST = os.getenv("RABBIT_HOST", "localhost")
 KUYRUK_ADI = os.getenv("KUYRUK_ADI", "interpol")
 ARALIK = int(os.getenv("KONTROL_ARALIGI", "30"))  # saniye cinsinden bekleme süresi
 
-# Veri kaynağı ve kuyruk bağlantısı oluşturulur.
-kaynak = OrnekKaynak(VERI_DOSYASI)
+# Veri kaynağı: önce Interpol API'si, erişim yoksa yedek olarak örnek dosya.
+kaynak = InterpolKaynak(yedek=OrnekKaynak(VERI_DOSYASI))
 kuyruk = Kuyruk(RABBIT_HOST, KUYRUK_ADI)
 
 # Sonsuz döngü: her turda kişileri okuyup kuyruğa gönderir, sonra bekler.
