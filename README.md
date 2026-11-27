@@ -8,7 +8,6 @@ TURK.Ai staj görevi kapsamında geliştirilmiştir.
 
 ## 🗺️ Mimari
 
-Sistem üç container'dan oluşur ve klasik **producer → broker → consumer** yapısını kullanır:
 
 ```mermaid
 flowchart LR
@@ -74,10 +73,7 @@ interpol_gorevi/
 
 ### Başlatma
 
-```bash
-cd interpol_gorevi
-docker compose up --build
-```
+
 
 İlk çalıştırmada imajlar indirildiği için 1–3 dakika sürebilir. RabbitMQ hazır olduğunda (healthcheck) Container A ve B otomatik olarak başlar.
 
